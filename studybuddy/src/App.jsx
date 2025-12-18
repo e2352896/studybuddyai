@@ -6,8 +6,17 @@ import { listenAuth, loginGoogle, loginGithub, logout } from "./auth";
 import { listenNotes, createNote, updateNote, deleteNote } from "./firestore";
 import { uploadNoteFile } from "./storage";
 import { summarizeNote } from "./openai";
+import ReCAPTCHA from "react-google-recaptcha";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "./firebase";
+
 
 export default function App() {
+  const [captchaOk, setCaptchaOk] = useState(false);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+  const verifyRecaptcha = httpsCallable(functions, "verifyRecaptchaV2");
+
+
   const [user, setUser] = useState(null);
 
   const [notes, setNotes] = useState([]);
@@ -25,9 +34,9 @@ export default function App() {
   const [status, setStatus] = useState("");
 
   useEffect(() => {
-    initAppCheck();
-  const unsub = listenAuth((u) => setUser(u));
-return () => unsub();
+    initAppCheck(); // App Check
+    const unsub = listenAuth((u) => setUser(u));
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -131,6 +140,20 @@ return () => unsub();
       setBusy(false);
     }
   }
+  async function handleCaptcha(token) {
+  setCaptchaLoading(true);
+  setCaptchaOk(false);
+  try {
+    await verifyRecaptcha({ token });
+    setCaptchaOk(true);
+  } catch (e) {
+    setCaptchaOk(false);
+    alert("❌ reCAPTCHA invalide. Réessaie.", e);
+  } finally {
+    setCaptchaLoading(false);
+  }
+}
+
 
   return (
     <div className="page">
@@ -143,8 +166,25 @@ return () => unsub();
         <div className="authbox">
           {!user ? (
             <>
-              <button onClick={loginGoogle}>Login Google</button>
-              <button onClick={loginGithub}>Login GitHub</button>
+              <div style={{ marginBottom: 10 }}>
+                <ReCAPTCHA
+                  sitekey={import.meta.env.VITE_RECAPTCHA_V2_SITE_KEY}
+                  onChange={handleCaptcha}
+                />
+              </div>
+
+              <button disabled={!captchaOk || captchaLoading} onClick={loginGoogle}>
+                Login Google
+              </button>
+              <button disabled={!captchaOk || captchaLoading} onClick={loginGithub}>
+                Login GitHub
+              </button>
+
+              <div className="hint" style={{ marginTop: 8 }}>
+                {captchaOk
+                  ? "✅ reCAPTCHA validé : tu peux te connecter."
+                  : ""}
+              </div>
             </>
           ) : (
             <>
