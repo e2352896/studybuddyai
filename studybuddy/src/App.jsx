@@ -25,9 +25,9 @@ export default function App() {
   const [status, setStatus] = useState("");
 
   useEffect(() => {
-    initAppCheck(); // App Check
-    const unsub = listenAuth((u) => setUser(u));
-    return () => unsub();
+    initAppCheck();
+  const unsub = listenAuth((u) => setUser(u));
+return () => unsub();
   }, []);
 
   useEffect(() => {
